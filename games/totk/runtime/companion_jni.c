@@ -37,6 +37,7 @@ static void JNICALL native_present_transform_hint(JNIEnv *env, jclass cls, jlong
 void runtime_android_text_done(JNIEnv *env, jclass cls, jlong serial, jbyteArray utf8);   /* frontend_android.c: swkbd */
 void runtime_android_game_focus(JNIEnv *env, jclass cls, jboolean focused, jboolean single_display);
 void runtime_android_game_input_focus(JNIEnv *env, jclass cls, jboolean top);
+void runtime_android_touch_pad(uint64_t buttons, int32_t lx, int32_t ly, int32_t rx, int32_t ry);
 /* feedback_android.c: the game's rumble and six-axis sensor */
 void runtime_android_motion(JNIEnv *env, jclass cls, jfloat ax, jfloat ay, jfloat az, jfloat gx, jfloat gy, jfloat gz);
 void runtime_android_motion_live(JNIEnv *env, jclass cls, jboolean on, jstring source);
@@ -101,6 +102,10 @@ static void actions_init(void) {   /* JNI_OnLoad: before any snapshot or request
     atomic_store_explicit(&runtime_companion_tick, frame_end_tick, memory_order_release);
 }
 
+static void JNICALL native_touch_pad_state(JNIEnv *env, jclass cls, jlong buttons, jint lx, jint ly, jint rx, jint ry) {
+    (void)env; (void)cls;
+    runtime_android_touch_pad((uint64_t)buttons, (int32_t)lx, (int32_t)ly, (int32_t)rx, (int32_t)ry);
+}
 static jint JNICALL native_request(JNIEnv *env, jclass cls, jstring action, jstring category, jint slot, jstring actor,
                                    jint partition, jlong pouch_gen) {
     if (!native_enabled(env, cls)) return COMPANION_UNSUPPORTED;
@@ -213,6 +218,7 @@ __attribute__((visibility("default"))) jint JNI_OnLoad(JavaVM *vm, void *reserve
             {"nativeTextInputDone", "(J[B)V", (void *)runtime_android_text_done},
             {"nativeGameFocus", "(ZZ)V", (void *)runtime_android_game_focus},
             {"nativeGameInputFocus", "(Z)V", (void *)runtime_android_game_input_focus},
+            {"nativeTouchPadState", "(JIIII)V", (void *)native_touch_pad_state},
             {"nativeMotion", "(FFFFFF)V", (void *)runtime_android_motion},
             {"nativeMotionLive", "(ZLjava/lang/String;)V", (void *)runtime_android_motion_live},
             {"nativeFeedbackEnabled", "()I", (void *)runtime_android_feedback_enabled},
