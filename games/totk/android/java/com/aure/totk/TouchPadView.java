@@ -3,11 +3,9 @@ package com.aure.totk;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.RectF;
 import android.util.SparseArray;
 import android.view.MotionEvent;
 import android.view.View;
-import java.util.Locale;
 
 /** Transparent, multi-touch Switch-style controller drawn over the NativeActivity surface. */
 final class TouchPadView extends View {
@@ -20,7 +18,6 @@ final class TouchPadView extends View {
         "A", "B", "X", "Y", "ZL", "L", "R", "ZR", "−", "+",
         "◀", "▲", "▶", "▼", "L3", "R3"
     };
-    private static final float DEAD_ZONE = .12f;
     private final SparseArray<Finger> fingers = new SparseArray<>();
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private float density;
@@ -148,7 +145,7 @@ final class TouchPadView extends View {
             for(int i=0;i<fingers.size();i++){Finger f=fingers.valueAt(i);if(f.kind==0&&f.button==b.index){pressed=true;break;}}
             paint.setAlpha(pressed?Math.min(255,alpha+55):alpha);
             circle(canvas,b.x,b.y,b.r,pressed);
-            paint.setStyle(Paint.Style.STROKE); canvas.drawCircle(b.x,b.y,b.r,nullSafePaint());
+            if(pressed) { paint.setStyle(Paint.Style.STROKE); canvas.drawCircle(b.x,b.y,b.r,paint); }
             paint.setStyle(Paint.Style.FILL);
             canvas.drawText(LABELS[b.index],b.x,b.y+dp(5),paint);
         }
@@ -156,7 +153,6 @@ final class TouchPadView extends View {
         drawStick(canvas,getWidth()*.22f,getHeight()*.80f,radius,1);
         drawStick(canvas,getWidth()*.78f,getHeight()*.80f,radius,2);
     }
-    private Paint nullSafePaint(){ paint.setStyle(Paint.Style.STROKE); return paint; }
     private void drawStick(Canvas c,float x,float y,float r,int kind) {
         Finger active=null;
         for(int i=0;i<fingers.size();i++){Finger f=fingers.valueAt(i);if(f.kind==kind){active=f;break;}}
