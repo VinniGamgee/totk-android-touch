@@ -1,0 +1,109 @@
+name: Android touch-controls build
+
+on:
+  push:
+    branches:
+      - feature/touch-controls
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-touch-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    name: Build Android APK (arm64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Install host build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang cmake git make ninja-build rsync unzip zip
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install Python build dependency
+        run: python -m pip install --upgrade pip cryptography==50.0.2
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform, build tools and NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platforms;android-33" "build-tools;35.0.0" "ndk;28.2.13676358"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
+      - name: Set up .NET 10 (NativeAOT shader translator)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build and audit developer APK
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+        run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+
+          android = Path("games/totk/android").resolve()
+          sys.path.insert(0, str(android))
+          import build_release
+
+          work = Path("build/android-touch-ci").resolve()
+          logs = work / "logs"
+          output = work / "TotK-Native-touch-dev.apk"
+          ndk = Path.home() / "Android" / "Sdk" / "ndk" / "28.2.13676358"
+          # setup-android exposes the SDK at ANDROID_HOME; the NDK is installed there.
+          import os
+          sdk = Path(os.environ["ANDROID_HOME"]).resolve()
+          ndk = sdk / "ndk" / "28.2.13676358"
+
+          build_release.app(
+              work=work,
+              ndk=ndk,
+              logs=logs,
+              out=output,
+              key=work / "ci-developer-key.pem",
+              make_key=True,
+              release=False,
+              turnip=None,
+              translator=None,
+              android_sdk=sdk,
+              jobs=2,
+          )
+          print(f"APK ready: {output}")
+          PY
+
+      - name: Verify APK exists and report checksum
+        run: |
+          test -s build/android-touch-ci/TotK-Native-touch-dev.apk
+          sha256sum build/android-touch-ci/TotK-Native-touch-dev.apk
+
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TotK-Native-touch-dev-${{ github.sha }}
+          path: build/android-touch-ci/TotK-Native-touch-dev.apk
+          if-no-files-found: error
+          retention-days: 14
