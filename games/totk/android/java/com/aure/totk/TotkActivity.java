@@ -9,6 +9,7 @@ import android.util.Log;
 import android.view.AttachedSurfaceControl;
 import android.view.Display;
 import android.view.View;
+import android.view.ViewGroup;
 import com.aure.totk.companion.AssetStore;
 import com.aure.totk.companion.CompanionNative;
 import com.aure.totk.companion.DisplayClass;
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
  * SetupActivity (process ":setup") starts it once install.json is playable; the game process never loads the setup library. */
 public final class TotkActivity extends NativeActivity {
     private PresentationController companion;
+    private TouchPadView touchPad;
     /** Copies the saves to the player's save folder after each in-game save (null when no folder is set). */
     private SaveMirror.Watcher saves;
     private AttachedSurfaceControl presentRoot;
@@ -53,6 +55,10 @@ public final class TotkActivity extends NativeActivity {
     private static native void nativeTextInputDone(long serial, byte[] utf8);
     private static native void nativeGameFocus(boolean focused, boolean singleDisplay);
     private static native void nativeGameInputFocus(boolean top);
+    private static native void nativeTouchPadState(long buttons, int lx, int ly, int rx, int ry);
+    static void sendTouchPadState(long buttons, int lx, int ly, int rx, int ry) {
+        nativeTouchPadState(buttons, lx, ly, rx, ry);
+    }
 
     /** runtime/frontend_android.c, on this (the UI) thread: the game asks for text (nn::swkbd). TextEntry answers exactly
      * once: the UTF-8 text, or null when the player cancelled. */
@@ -144,6 +150,13 @@ public final class TotkActivity extends NativeActivity {
     }
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        // The transparent virtual controller sits above NativeActivity's game surface.
+        View content = findViewById(android.R.id.content);
+        if (content instanceof ViewGroup) {
+            touchPad = new TouchPadView(this);
+            ((ViewGroup) content).addView(touchPad, new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
         // NativeActivity synchronously loads totk.env in ANativeActivity_onCreate.
         // Query only after super, before constructing a controller or display listener.
         // The companion art is generated on the device by the optional setup stage; without it the companion stays off.
