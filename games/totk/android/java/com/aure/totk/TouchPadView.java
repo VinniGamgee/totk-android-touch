@@ -61,6 +61,15 @@ final class TouchPadView extends View {
     }
 
     private float dp(float value) { return value * density * scale; }
+    void setOpacity(float value) {
+        opacity=Math.max(.12f,Math.min(.8f,value));
+        preferences.edit().putFloat("opacity",opacity).apply();
+        invalidate();
+    }
+    void setScale(float value) {
+        scale=Math.max(.75f,Math.min(1.35f,value));
+        invalidate();
+    }
     private float diamond(float h) { return Math.min(dp(52), h * .14f); }
 
     private void loadLayout() {
@@ -330,8 +339,13 @@ final class TouchPadView extends View {
                 if(f.kind==0 && f.button==b.index) { pressed=true; break; }
             }
             paint.setAlpha(pressed?Math.min(255,alpha+55):alpha);
-            paint.setStyle(editor && selectedControl==b.index?Paint.Style.STROKE:Paint.Style.FILL);
-            circle(canvas,b.x,b.y,b.r,pressed || (editor && selectedControl==b.index));
+            paint.setStyle(Paint.Style.FILL);
+            circle(canvas,b.x,b.y,b.r,pressed);
+            if(editor && selectedControl==b.index) {
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(dp(3));
+                canvas.drawCircle(b.x,b.y,b.r+dp(3),paint);
+            }
             paint.setStyle(Paint.Style.FILL);
             canvas.drawText(LABELS[b.index],b.x,b.y+dp(5),paint);
         }
