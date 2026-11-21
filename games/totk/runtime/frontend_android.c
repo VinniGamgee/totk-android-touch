@@ -1787,6 +1787,15 @@ static int switch_bit(int keycode) {
     }
     return -1;
 }
+/* Java's transparent TouchPadView feeds the same Switch bit order as a physical controller. */
+void runtime_android_touch_pad(uint64_t buttons, int32_t lx, int32_t ly, int32_t rx, int32_t ry) {
+    pthread_mutex_lock(&g_pad_mu);
+    g_touch_edges |= buttons & ~g_touch_buttons;
+    g_touch_buttons = buttons;
+    g_touch_axes[0] = lx; g_touch_axes[1] = ly; g_touch_axes[2] = rx; g_touch_axes[3] = ry;
+    g_touch_active = 1;
+    pthread_mutex_unlock(&g_pad_mu);
+}
 static int32_t stick(float v) {   /* gamepad.m stick_axis: 12 % dead zone, rescaled to the Switch's range */
     const float dz = 0.12f; float m = v < 0 ? -v : v;
     if (m <= dz) return 0; if (m > 1) m = 1;
@@ -1860,7 +1869,7 @@ static int handle_input(AInputEvent *ev) {
 void runtime_gamepad_start(void) {}
 void runtime_gamepad_clear(void) {
     pthread_mutex_lock(&g_pad_mu);
-    g_keys = g_hat = g_trig = g_edges = 0; memset(g_axes, 0, sizeof g_axes); memset(&g_chord, 0, sizeof g_chord);
+    g_keys = g_hat = g_trig = g_edges = 0; g_touch_buttons = g_touch_edges = 0; g_touch_active = 0; memset(g_axes, 0, sizeof g_axes); memset(g_touch_axes, 0, sizeof g_touch_axes); memset(&g_chord, 0, sizeof g_chord);
     pthread_mutex_unlock(&g_pad_mu);
 }
 void runtime_gamepad_read(RuntimeGamepadState *out) {
@@ -1869,9 +1878,13 @@ void runtime_gamepad_read(RuntimeGamepadState *out) {
     chord_minus_locked(timed);
     if (timed && chord_log())   /* rare (once per lone Minus); the diagnostic accepts printing under the pad lock */
         fprintf(stderr, "[chord] pad read: %s\n", timed & OVERLAY_CHORD_MINUS_DOWN ? "deliver late: 150 ms passed without R" : "tap replay ends (minus released)");
-    out->buttons = g_keys | g_hat | g_trig | g_edges; g_edges = 0;   /* a press shorter than one read still reaches the game */
-    out->lx = g_axes[0]; out->ly = g_axes[1]; out->rx = g_axes[2]; out->ry = g_axes[3];
-    out->connected = g_pad_seen;
+    out->buttons = g_keys | g_hat | g_trig | g_edges | g_touch_buttons | g_touch_edges;
+    g_edges = 0; g_touch_edges = 0;   /* a short tap survives until the game reads it */
+    out->lx = abs(g_axes[0]) >= abs(g_touch_axes[0]) ? g_axes[0] : g_touch_axes[0];
+    out->ly = abs(g_axes[1]) >= abs(g_touch_axes[1]) ? g_axes[1] : g_touch_axes[1];
+    out->rx = abs(g_axes[2]) >= abs(g_touch_axes[2]) ? g_axes[2] : g_touch_axes[2];
+    out->ry = abs(g_axes[3]) >= abs(g_touch_axes[3]) ? g_axes[3] : g_touch_axes[3];
+    out->connected = g_pad_seen || g_touch_active;
     pthread_mutex_unlock(&g_pad_mu);
 }
 int runtime_front_request_close(void) {
