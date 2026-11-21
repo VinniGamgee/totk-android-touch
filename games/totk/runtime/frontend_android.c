@@ -1754,6 +1754,10 @@ enum { SW_A = 0, SW_B, SW_X, SW_Y, SW_LS, SW_RS, SW_L, SW_R, SW_ZL, SW_ZR, SW_PL
 static pthread_mutex_t g_pad_mu = PTHREAD_MUTEX_INITIALIZER;
 static uint64_t g_keys, g_hat, g_trig, g_edges;   /* buttons from key events, from the hat axes, from trigger axes; presses since the last read */
 static int32_t g_axes[4];
+/* Touchscreen controller state shares the gamepad lock and Switch bit order. */
+static uint64_t g_touch_buttons, g_touch_edges;
+static int32_t g_touch_axes[4];
+static int g_touch_active;
 static int g_pad_seen;
 static overlay_chord g_chord;   /* Minus + R live overlay shortcut (overlay_chord.h); under g_pad_mu */
 static uint64_t mono_ns(void) { struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts); return (uint64_t)ts.tv_sec * 1000000000u + (uint64_t)ts.tv_nsec; }
