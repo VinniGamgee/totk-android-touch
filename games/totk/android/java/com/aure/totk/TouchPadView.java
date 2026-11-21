@@ -159,7 +159,7 @@ final class TouchPadView extends View {
         invalidate();
     }
     private void editorDown(int id,float x,float y) {
-        if(y<dp(58)) {
+        if(y<dp(40)) {
             if(x>getWidth()*.82f) { leaveEditor(); return; }
             if(x<getWidth()*.18f) { resetLayout(); return; }
             if(x<getWidth()*.38f) {
@@ -247,7 +247,7 @@ final class TouchPadView extends View {
         }
     }
     private void drawEditor(Canvas canvas) {
-        float h=dp(58);
+        float h=dp(40);
         paint.setStyle(Paint.Style.FILL); paint.setAlpha(220);
         canvas.drawRoundRect(dp(6),dp(5),getWidth()-dp(6),h,dp(10),dp(10),paint);
         paint.setAlpha(255); paint.setTextSize(dp(11)); paint.setTextAlign(Paint.Align.CENTER);
