@@ -90,7 +90,7 @@ final class TouchPadView extends View {
         float radius=dp(68);
         for(int i=0;i<fingers.size();i++) {
             Finger f=fingers.valueAt(i);
-            if(f.kind==0) { buttons |= (1L << f.button); continue; }
+            if(f.kind==0) { buttons |= BITS[f.button]; continue; }
             float dx=f.x-f.ox, dy=f.oy-f.y;
             float distance=(float)Math.hypot(dx,dy);
             if(distance>radius) { dx*=radius/distance; dy*=radius/distance; }
